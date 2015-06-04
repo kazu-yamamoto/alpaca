@@ -146,29 +146,29 @@ See also 'alpaca-save-buffer'."
 	 pro)
     (unwind-protect
 	(progn
-	 (setq pro (alpaca-start-process alpaca-process-decryption buf alpaca-program
-					 "-d" "--yes" "--pinentry-mode" "loopback" "--output" tfile file))
-	 (set-process-filter   pro 'alpaca-filter)
-	 (set-process-sentinel pro 'alpaca-sentinel)
-	 (setq alpaca-rendezvous t)
-	 (while alpaca-rendezvous
-	   (sit-for 0.1)
-	   (discard-input))
-	 (cond
-	  ((> (alpaca-file-size file) 0)
-	   (erase-buffer)
-	   (if (default-value 'enable-multibyte-characters)
-	       (set-buffer-multibyte t))
-	   (let ((coding-system-for-read 'undecided))
-	     (insert-file-contents tfile))
-	   (alpaca-buffer-hack)
-	   (set-buffer-file-coding-system last-coding-system-used)
-	   (setq buffer-undo-list nil)
-	   (set-buffer-modified-p nil))
-	  (t
-	   (switch-to-buffer (car (buffer-list)))
-	   (kill-buffer buf)))
-	 (set (make-variable-buffer-local 'alpaca-p) t))
+	  (setq pro (alpaca-start-process alpaca-process-decryption buf alpaca-program
+					  "-d" "--yes" "--pinentry-mode" "loopback" "--output" tfile file))
+	  (set-process-filter   pro 'alpaca-filter)
+	  (set-process-sentinel pro 'alpaca-sentinel)
+	  (setq alpaca-rendezvous t)
+	  (while alpaca-rendezvous
+	    (sit-for 0.1)
+	    (discard-input))
+	  (cond
+	   ((> (alpaca-file-size file) 0)
+	    (erase-buffer)
+	    (if (default-value 'enable-multibyte-characters)
+		(set-buffer-multibyte t))
+	    (let ((coding-system-for-read 'undecided))
+	      (insert-file-contents tfile))
+	    (alpaca-buffer-hack)
+	    (set-buffer-file-coding-system last-coding-system-used)
+	    (setq buffer-undo-list nil)
+	    (set-buffer-modified-p nil))
+	   (t
+	    (switch-to-buffer (car (buffer-list)))
+	    (kill-buffer buf)))
+	  (set (make-variable-buffer-local 'alpaca-p) t))
       (alpaca-delete-file tfile))))
 
 (defun alpaca-setup-keymap ()
@@ -200,8 +200,8 @@ See also 'alpaca-find-file'."
 	  (progn
 	    (write-region (point-min) (point-max) tfile nil 'no-msg)
 	    (setq pro (alpaca-start-process alpaca-process-encryption buf alpaca-program
-					 "-c" "--cipher-algo" alpaca-cipher
-					 "--yes" "--pinentry-mode" "loopback" "--output" file tfile))
+					    "-c" "--cipher-algo" alpaca-cipher
+					    "--yes" "--pinentry-mode" "loopback" "--output" file tfile))
 	    (set-process-filter   pro 'alpaca-filter)
 	    (set-process-sentinel pro 'alpaca-sentinel)
 	    (setq alpaca-rendezvous t)
