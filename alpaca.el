@@ -87,16 +87,6 @@ to encrypt the buffer when saving.")
 ;;; Sub-functions
 ;;;
 
-(defun alpaca-file-modified-time (file)
-  (nth 5 (file-attributes file)))
-
-(defun alpaca-file-newer (t1 t2)
-  (and t1
-       (or (null t2) 
-	   (> (nth 0 t1) (nth 0 t2))
-	   (and (= (nth 0 t1) (nth 0 t2))
-		(> (nth 1 t1) (nth 1 t2))))))
-
 (defalias 'alpaca-make-temp-file
   (if (fboundp 'make-temp-file) 'make-temp-file 'make-temp-name))
 
@@ -153,21 +143,19 @@ See also 'alpaca-save-buffer'."
 	 (buf (current-buffer))
 	 (file (buffer-file-name))
 	 (tfile (alpaca-make-temp-file file))
-	 (oldt (alpaca-file-modified-time tfile))
-	 newt pro)
+	 pro)
     (unwind-protect
 	(progn
 	 (setq pro (alpaca-start-process alpaca-process-decryption buf alpaca-program
-					 "-d" "--yes" "--output" tfile file))
+					 "-d" "--yes" "--pinentry-mode" "loopback" "--output" tfile file))
 	 (set-process-filter   pro 'alpaca-filter)
 	 (set-process-sentinel pro 'alpaca-sentinel)
 	 (setq alpaca-rendezvous t)
 	 (while alpaca-rendezvous
 	   (sit-for 0.1)
 	   (discard-input))
-	 (setq newt (alpaca-file-modified-time tfile))
 	 (cond
-	  ((alpaca-file-newer newt oldt)
+	  ((> (alpaca-file-size file) 0)
 	   (erase-buffer)
 	   (if (default-value 'enable-multibyte-characters)
 	       (set-buffer-multibyte t))
@@ -204,30 +192,26 @@ See also 'alpaca-find-file'."
   (if (not (buffer-modified-p))
       (message "(No changes need to be saved)")
     (let* ((file (buffer-file-name))
-	   (oldt (alpaca-file-modified-time file))
 	   (tfile (alpaca-make-temp-file file))
 	   (buf (current-buffer))
 	   (process-connection-type t) ;; 'pty
-	   pro newt)
+	   pro)
       (unwind-protect
 	  (progn
 	    (write-region (point-min) (point-max) tfile nil 'no-msg)
 	    (setq pro (alpaca-start-process alpaca-process-encryption buf alpaca-program
 					 "-c" "--cipher-algo" alpaca-cipher
-					 "--yes" "--output" file tfile))
+					 "--yes" "--pinentry-mode" "loopback" "--output" file tfile))
 	    (set-process-filter   pro 'alpaca-filter)
 	    (set-process-sentinel pro 'alpaca-sentinel)
 	    (setq alpaca-rendezvous t)
 	    (while alpaca-rendezvous
 	      (sit-for 0.1)
 	      (discard-input))
-	    (setq newt (alpaca-file-modified-time file))
-	    (if (not newt)
-		(debug)
-	      (when (alpaca-file-newer newt oldt)
-		(set-buffer-modified-p nil)
-		(set-visited-file-modtime)
-		(message (format "Wrote %s with GnuPG" file)))))
+	    (when (> (alpaca-file-size file) 0)
+	      (set-buffer-modified-p nil)
+	      (set-visited-file-modtime)
+	      (message (format "Wrote %s with GnuPG" file))))
 	(alpaca-delete-file tfile)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -299,11 +283,16 @@ See also 'alpaca-find-file'."
 ;;; Common functions
 ;;;
 
+(defun alpaca-file-size (file)
+  (if (file-exists-p file)
+      (nth 7 (file-attributes file))
+    0))
+
 (defun alpaca-delete-file (file)
   (when (file-exists-p file)
     (with-temp-buffer
       (let ((coding-system-for-write 'binary)
-	    (size (nth 7 (file-attributes file)))
+	    (size (alpaca-file-size file))
 	    (i 0))
 	(while (< i size)
 	  (insert 0)
