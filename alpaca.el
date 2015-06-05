@@ -67,6 +67,25 @@ to encrypt the buffer when saving.")
 
 (defvar alpaca-regex-suffix "\\.gpg$")
 
+(defun alpaca-gpg-version ()
+  (with-temp-buffer
+    (call-process alpaca-program nil t nil "--version")
+    (goto-char (point-min))
+    (re-search-forward "(GnuPG) " nil t)
+    (if (looking-at "\\([0-9]+\\)\\.\\([0-9]+\\)")
+	(list
+	 (string-to-number (match-string 1))
+	 (string-to-number (match-string 2))))))
+
+(defvar alpaca-agent-hack
+  (let* ((ver (alpaca-gpg-version))
+	 (major (nth 0 ver))
+	 (minor (nth 1 ver)))
+    (cond
+     ((= major 1) nil)
+     ((= major 2) (>= minor 1))
+     (t t))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Internal variables
@@ -147,7 +166,7 @@ See also 'alpaca-save-buffer'."
 	 pro)
     (unwind-protect
 	(progn
-	  (alpaca-clear-passphrase file)
+	  (when alpaca-agent-hack (alpaca-clear-passphrase file))
 	  (setq pro (apply 'alpaca-start-process
 			   alpaca-process-decryption buf alpaca-program args))
 	  (set-process-filter   pro 'alpaca-filter)
@@ -315,18 +334,10 @@ See also 'alpaca-find-file'."
 	(insert "CLEAR_PASSPHRASE " cache-id "\n")
 	(call-process-region (point-min) (point-max) "gpg-connect-agent")))))
 
-(defun alpaca-gpg-version ()
-  (with-temp-buffer
-    (call-process alpaca-program nil t nil "--version")
-    (goto-char (point-min))
-    (re-search-forward "(GnuPG) " nil t)
-    (if (looking-at "\\([0-9]+\\)\\.\\([0-9]+\\)")
-	(list
-	 (string-to-number (mew-match-string 1))
-	 (string-to-number (mew-match-string 2))))))
-
 (defun alpaca-adjust-args (args)
-  (cons "--pinentry-mode" (cons "loopback" args)))
+  (if alpaca-agent-hack
+      (cons "--pinentry-mode" (cons "loopback" args))
+    args))
 
 (provide 'alpaca)
 
