@@ -143,12 +143,13 @@ See also 'alpaca-save-buffer'."
 	 (buf (current-buffer))
 	 (file (buffer-file-name))
 	 (tfile (alpaca-make-temp-file file))
+	 (args (alpaca-adjust-args (list "-d" "--yes" "--output" tfile file)))
 	 pro)
     (unwind-protect
 	(progn
 	  (alpaca-clear-passphrase file)
-	  (setq pro (alpaca-start-process alpaca-process-decryption buf alpaca-program
-					  "-d" "--yes" "--pinentry-mode" "loopback" "--output" tfile file))
+	  (setq pro (apply 'alpaca-start-process
+			   alpaca-process-decryption buf alpaca-program args))
 	  (set-process-filter   pro 'alpaca-filter)
 	  (set-process-sentinel pro 'alpaca-sentinel)
 	  (setq alpaca-rendezvous t)
@@ -193,15 +194,16 @@ See also 'alpaca-find-file'."
       (message "(No changes need to be saved)")
     (let* ((file (buffer-file-name))
 	   (tfile (alpaca-make-temp-file file))
+	   (args (alpaca-adjust-args (list "-c" "--cipher-algo" alpaca-cipher
+					   "--yes" "--output" file tfile)))
 	   (buf (current-buffer))
 	   (process-connection-type t) ;; 'pty
 	   pro)
       (unwind-protect
 	  (progn
 	    (write-region (point-min) (point-max) tfile nil 'no-msg)
-	    (setq pro (alpaca-start-process alpaca-process-encryption buf alpaca-program
-					    "-c" "--cipher-algo" alpaca-cipher
-					    "--yes" "--pinentry-mode" "loopback" "--output" file tfile))
+	    (setq pro (apply 'alpaca-start-process
+			     alpaca-process-encryption buf alpaca-program args))
 	    (set-process-filter   pro 'alpaca-filter)
 	    (set-process-sentinel pro 'alpaca-sentinel)
 	    (setq alpaca-rendezvous t)
@@ -313,6 +315,18 @@ See also 'alpaca-find-file'."
 	(insert "CLEAR_PASSPHRASE " cache-id "\n")
 	(call-process-region (point-min) (point-max) "gpg-connect-agent")))))
 
+(defun alpaca-gpg-version ()
+  (with-temp-buffer
+    (call-process alpaca-program nil t nil "--version")
+    (goto-char (point-min))
+    (re-search-forward "(GnuPG) " nil t)
+    (if (looking-at "\\([0-9]+\\)\\.\\([0-9]+\\)")
+	(list
+	 (string-to-number (mew-match-string 1))
+	 (string-to-number (mew-match-string 2))))))
+
+(defun alpaca-adjust-args (args)
+  (cons "--pinentry-mode" (cons "loopback" args)))
 
 (provide 'alpaca)
 
