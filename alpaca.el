@@ -146,6 +146,7 @@ See also 'alpaca-save-buffer'."
 	 pro)
     (unwind-protect
 	(progn
+	  (alpaca-clear-passphrase file)
 	  (setq pro (alpaca-start-process alpaca-process-decryption buf alpaca-program
 					  "-d" "--yes" "--pinentry-mode" "loopback" "--output" tfile file))
 	  (set-process-filter   pro 'alpaca-filter)
@@ -299,6 +300,21 @@ See also 'alpaca-find-file'."
 	  (setq i (1+ i)))
 	(write-region (point-min) (point-max) file nil 'no-msg)))
     (delete-file file)))
+
+(defun alpaca-get-cache-id (file)
+  (with-temp-buffer
+    (call-process alpaca-program nil t nil "--list-packets" file)
+    (goto-char (point-min))
+    (when (re-search-forward "salt \\([^ ,]+\\)," nil t)
+      (concat "S" (match-string 1)))))
+
+(defun alpaca-clear-passphrase (file)
+  (when (file-exists-p file)
+    (let ((cache-id (alpaca-get-cache-id file)))
+      (with-temp-buffer
+	(insert "CLEAR_PASSPHRASE " cache-id "\n")
+	(call-process-region (point-min) (point-max) "gpg-connect-agent")))))
+
 
 (provide 'alpaca)
 
