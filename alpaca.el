@@ -153,8 +153,7 @@ See also 'alpaca-save-buffer'."
 	  (set-process-sentinel pro 'alpaca-sentinel)
 	  (setq alpaca-rendezvous t)
 	  (while alpaca-rendezvous
-	    (sit-for 0.1)
-	    (discard-input))
+	    (accept-process-output pro 0.1 nil t))
 	  (cond
 	   ((> (alpaca-file-size file) 0)
 	    (erase-buffer)
@@ -207,8 +206,7 @@ See also 'alpaca-find-file'."
 	    (set-process-sentinel pro 'alpaca-sentinel)
 	    (setq alpaca-rendezvous t)
 	    (while alpaca-rendezvous
-	      (sit-for 0.1)
-	      (discard-input))
+	      (accept-process-output pro 0.1 nil t))
 	    (when (> (alpaca-file-size file) 0)
 	      (set-buffer-modified-p nil)
 	      (set-visited-file-modtime)
