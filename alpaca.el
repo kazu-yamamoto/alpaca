@@ -142,12 +142,16 @@ See also 'alpaca-save-buffer'."
   (let* ((process-connection-type t) ;; 'pty
 	 (buf (current-buffer))
 	 (file (buffer-file-name))
+	 (cfile (alpaca-make-temp-file file))
 	 (tfile (alpaca-make-temp-file file))
 	 pro)
     (unwind-protect
 	(progn
+	  ;; to avoid cached passphrases in gpg-agent,
+	  ;; we copy the original first.
+	  (copy-file file cfile t)
 	  (setq pro (alpaca-start-process alpaca-process-decryption buf alpaca-program
-					  "-d" "--yes" "--pinentry-mode" "loopback" "--output" tfile file))
+					  "-d" "--yes" "--pinentry-mode" "loopback" "--output" tfile cfile))
 	  (set-process-filter   pro 'alpaca-filter)
 	  (set-process-sentinel pro 'alpaca-sentinel)
 	  (setq alpaca-rendezvous t)
@@ -169,6 +173,7 @@ See also 'alpaca-save-buffer'."
 	    (switch-to-buffer (car (buffer-list)))
 	    (kill-buffer buf)))
 	  (set (make-variable-buffer-local 'alpaca-p) t))
+      (alpaca-delete-file cfile)
       (alpaca-delete-file tfile))))
 
 (defun alpaca-setup-keymap ()
