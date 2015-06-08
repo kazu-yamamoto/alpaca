@@ -67,24 +67,33 @@ to encrypt the buffer when saving.")
 
 (defvar alpaca-regex-suffix "\\.gpg$")
 
+(defun alpaca-which (file path)
+  (catch 'loop
+    (while path
+      (if (file-exists-p (expand-file-name file (car path)))
+	  (throw 'loop t)
+	(setq path (cdr path))))))
+
 (defun alpaca-gpg-version ()
-  (with-temp-buffer
-    (call-process alpaca-program nil t nil "--version")
-    (goto-char (point-min))
-    (re-search-forward "(GnuPG) " nil t)
-    (if (looking-at "\\([0-9]+\\)\\.\\([0-9]+\\)")
-	(list
-	 (string-to-number (match-string 1))
-	 (string-to-number (match-string 2))))))
+  (when (alpaca-which alpaca-program exec-path)
+    (with-temp-buffer
+      (call-process alpaca-program nil t nil "--version")
+      (goto-char (point-min))
+      (re-search-forward "(GnuPG) " nil t)
+      (if (looking-at "\\([0-9]+\\)\\.\\([0-9]+\\)")
+	  (list
+	   (string-to-number (match-string 1))
+	   (string-to-number (match-string 2)))))))
 
 (defvar alpaca-agent-hack
-  (let* ((ver (alpaca-gpg-version))
-	 (major (nth 0 ver))
-	 (minor (nth 1 ver)))
-    (cond
-     ((= major 1) nil)
-     ((= major 2) (>= minor 1))
-     (t t))))
+  (let ((ver (alpaca-gpg-version)))
+    (when ver
+      (let ((major (nth 0 ver))
+	    (minor (nth 1 ver)))
+	(cond
+	 ((= major 1) nil)
+	 ((= major 2) (>= minor 1))
+	 (t t))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -120,13 +129,6 @@ to encrypt the buffer when saving.")
 ;;;
 ;;; Decrypting and loading
 ;;;
-
-(defun alpaca-which (file path)
-  (catch 'loop
-    (while path
-      (if (file-exists-p (expand-file-name file (car path)))
-	  (throw 'loop t)
-	(setq path (cdr path))))))
 
 (defun alpaca-buffer-hack ()
   (let ((pass alpaca-passphrase) ;; major mode kills local variables
